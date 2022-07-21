@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use http\Client\Curl\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Stripe\PaymentIntent;
@@ -32,6 +33,9 @@ class ApiController extends Controller
             'description' => $request['description'],
             'email' => $request['email'],
         ]);
+        $user = User::where(['email' => $request['email']])->first();
+        $user->update(['stripe_customer_id' => $customer->id]);
+
         if(!$customer){
             return response(array('status' => false, 'message' => 'Failed to create customer'));
         }else {
@@ -50,6 +54,7 @@ class ApiController extends Controller
             'currency' => $request['currency'],
             'payment_method_types' => ['card']
         ]);
+        dd($intents);
         if(!$intents){
             return response(array('status' => false, 'message' => 'Failed to Create Intent'));
         }else {
@@ -84,12 +89,15 @@ class ApiController extends Controller
 
     }
 
-    public function StripeAttachCard()
+    public function StripeAttachCard(Request $request)
     {
-        $stripe = new \Stripe\StripeClient('sk_test_51L3a7TSCROyfBwpuE7VyPyoayRcKLnOeYjlQ4LNSkmzNsz9YpvpEr0VtNCxq7MfALLx0Tt3oNXpLHflcTojkrNff00RVs2eI85');
-        $check =   $stripe->paymentMethods->attach(
-            'pm_1LNEpXSCROyfBwpu9k2bLniH',
-            ['customer' => 'cus_M5Pi8yL53P8VKQ']
+        $validate = Validator::make($request->all(),[
+            'cutomer' => 'required|string',
+            'payment_method' => 'required|string'
+        ]);
+        $stripe = new StripeClient('sk_test_51L3a7TSCROyfBwpuE7VyPyoayRcKLnOeYjlQ4LNSkmzNsz9YpvpEr0VtNCxq7MfALLx0Tt3oNXpLHflcTojkrNff00RVs2eI85');
+        $check =   $stripe->paymentMethods->attach($request['payment_method'],
+            ['customer' => $request['customer']]
         );
         if(!$check){
             return response(array('status' => false, 'message' => 'Attached Successful'));
